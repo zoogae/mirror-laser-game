@@ -51,6 +51,9 @@ const COLORS = {
   target:  [0.55, 0.57, 0.66, 1],   // 비활성 목표
 };
 
+// 레이저 높이 (거울판·발사구 높이에 맞춤)
+const LASER_Y = 0.48;
+
 // ---------------- 좌표 변환 ----------------
 // 게임판 격자 (col, row) → 3D 공간 (x, z). 게임판 중앙이 원점이 되도록 이동
 //  - col: 오른쪽(+x)으로 증가, row: 앞쪽(+z)으로 증가, 바닥 윗면은 y = 0
@@ -75,7 +78,8 @@ function box(x, z, y0, sx, sy, sz, color, angleDeg = 0, emissive = 0) {
 }
 
 // ---------------- 장면 구성 ----------------
-export function buildScene(level) {
+// hitTargets: 레이저가 도달한 목표 번호(Set). 도달한 목표는 레이저 색으로 빛남
+export function buildScene(level, hitTargets = new Set()) {
   const parts = [];
   const [w, h] = level.size;
 
@@ -109,11 +113,12 @@ export function buildScene(level) {
   }
 
   // 목표 장치: 받침 + 45° 돌린 작은 결정(큐브)
-  level.targets.forEach(t => {
+  level.targets.forEach((t, i) => {
     const [x, z] = gridToWorld(level, t.pos[0], t.pos[1]);
+    const on = hitTargets.has(i);
     parts.push(box(x, z, 0, 0.7, 0.2, 0.7, COLORS.metal));
     const crystal = mult(translate(x, 0.6, z), rotateY(45), scaleMat(0.3, 0.45, 0.3));
-    parts.push(part(crystal, COLORS.target));
+    parts.push(part(crystal, on ? COLORS.laser : COLORS.target, on ? 1.0 : 0));
   });
 
   // 거울: 받침(회전/고정 색 구분) + 얇은 거울판
@@ -123,5 +128,20 @@ export function buildScene(level) {
     parts.push(box(x, z, 0.1, 0.9, 0.8, 0.07, COLORS.mirror, m.angle, 0.35));
   });
 
+  return parts;
+}
+
+// 레이저: 꺾이는 지점 사이를 얇고 밝은 막대(상자)로 연결
+export function buildLaser(level, points) {
+  const parts = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x1, z1] = gridToWorld(level, points[i][0], points[i][1]);
+    const [x2, z2] = gridToWorld(level, points[i + 1][0], points[i + 1][1]);
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    if (len < 1e-6) continue;
+    const angle = Math.atan2(z2 - z1, x2 - x1) * 180 / Math.PI;
+    parts.push(box((x1 + x2) / 2, (z1 + z2) / 2, LASER_Y - 0.03,
+                   len, 0.06, 0.06, COLORS.laser, angle, 1.0));
+  }
   return parts;
 }

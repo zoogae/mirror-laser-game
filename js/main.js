@@ -1,7 +1,8 @@
 import { initGL, loadText, createProgram, resizeCanvas,
          createMesh, getLocations, drawParts } from './renderer.js';
 import { perspective, lookAt, radians } from './math.js';
-import { createCube, buildScene } from './objects.js';
+import { createCube, buildScene, buildLaser } from './objects.js';
+import { traceLaser, runReflectTests } from './laser.js';
 import { LEVELS } from './levels.js';
 
 async function main() {
@@ -16,9 +17,11 @@ async function main() {
   const loc = getLocations(gl, program);
   const cubeMesh = createMesh(gl, createCube());
 
-  // 현재 레벨 → 그릴 부품 목록
+  // 반사 공식 검증 결과를 콘솔(F12)에 표로 출력
+  runReflectTests();
+
+  // 현재 레벨
   const level = LEVELS[0];
-  const parts = buildScene(level);
   document.getElementById('level-info').textContent = `STAGE ${level.id}`;
 
   gl.enable(gl.DEPTH_TEST);
@@ -45,7 +48,11 @@ async function main() {
     gl.uniformMatrix4fv(loc.projection, false, perspective(45, aspect, 0.1, 100));
     gl.uniformMatrix4fv(loc.view, false, lookAt(cameraEye(), [0, 0, 0], [0, 1, 0]));
 
-    drawParts(gl, loc, cubeMesh, parts);
+    // 매 프레임 레이저 경로 계산 → 장면 + 레이저 그리기
+    // (5단계에서 거울을 돌리면 다음 프레임에 바로 반영됨)
+    const laser = traceLaser(level);
+    drawParts(gl, loc, cubeMesh, buildScene(level, laser.hitTargets));
+    drawParts(gl, loc, cubeMesh, buildLaser(level, laser.points));
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);

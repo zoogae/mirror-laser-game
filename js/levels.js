@@ -10,7 +10,7 @@ export const LEVELS = [
     id: '1-1', stage: 1, theme: 'lab',
     size: [7, 7],
     source:  { pos: [0, 3], dir: 0 },
-    mirrors: [ { pos: [4, 3], angle: 45, rotatable: true } ],
+    mirrors: [ { pos: [4, 3], angle: 135, rotatable: true } ],
     walls:   [ [2, 1], [2, 5], [6, 6] ],
     targets: [ { pos: [4, 0] } ],
     solution: [135],
