@@ -117,3 +117,32 @@ export function lookAt(eye, at, up) {
     -dot(u, eye), -dot(v, eye), -dot(n, eye), 1,
   ]);
 }
+
+// 법선 변환 행렬: 모델 행렬 왼쪽 위 3x3의 역행렬의 전치 (조명 계산용)
+// 크기 변환(scale)을 해도 법선 벡터가 면에 수직인 상태를 유지하도록 해 줌
+export function normalMatrix(m) {
+  const a00 = m[0], a10 = m[1], a20 = m[2];
+  const a01 = m[4], a11 = m[5], a21 = m[6];
+  const a02 = m[8], a12 = m[9], a22 = m[10];
+
+  // 여인수(cofactor)
+  const c00 =   a11 * a22 - a12 * a21;
+  const c01 = -(a10 * a22 - a12 * a20);
+  const c02 =   a10 * a21 - a11 * a20;
+  const c10 = -(a01 * a22 - a02 * a21);
+  const c11 =   a00 * a22 - a02 * a20;
+  const c12 = -(a00 * a21 - a01 * a20);
+  const c20 =   a01 * a12 - a02 * a11;
+  const c21 = -(a00 * a12 - a02 * a10);
+  const c22 =   a00 * a11 - a01 * a10;
+
+  const det = a00 * c00 + a01 * c01 + a02 * c02;
+  const k = 1 / det;
+
+  // 열 우선 3x3 행렬로 반환
+  return new Float32Array([
+    c00 * k, c10 * k, c20 * k,
+    c01 * k, c11 * k, c21 * k,
+    c02 * k, c12 * k, c22 * k,
+  ]);
+}

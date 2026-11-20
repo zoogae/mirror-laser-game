@@ -1,3 +1,5 @@
+import { mult, normalMatrix } from './math.js';
+
 // 1) WebGL 컨텍스트 얻기
 export function initGL(canvas) {
   const gl = canvas.getContext('webgl');
@@ -53,4 +55,52 @@ export function resizeCanvas(gl) {
     canvas.height = h;
   }
   gl.viewport(0, 0, canvas.width, canvas.height);
+}
+
+// ---------------- 메시 그리기 ----------------
+// 정점 데이터(위치·법선)를 GPU 버퍼에 올림
+export function createMesh(gl, data) {
+  const position = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, position);
+  gl.bufferData(gl.ARRAY_BUFFER, data.positions, gl.STATIC_DRAW);
+
+  const normal = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, normal);
+  gl.bufferData(gl.ARRAY_BUFFER, data.normals, gl.STATIC_DRAW);
+
+  return { position, normal, count: data.count };
+}
+
+// 셰이더 변수 위치를 한 번만 찾아 저장
+export function getLocations(gl, program) {
+  return {
+    vPosition:  gl.getAttribLocation(program, 'vPosition'),
+    vNormal:    gl.getAttribLocation(program, 'vNormal'),
+    model:      gl.getUniformLocation(program, 'modelMatrix'),
+    view:       gl.getUniformLocation(program, 'viewMatrix'),
+    projection: gl.getUniformLocation(program, 'projectionMatrix'),
+    normalMat:  gl.getUniformLocation(program, 'normalMatrix'),
+    color:      gl.getUniformLocation(program, 'objectColor'),
+    lightDir:   gl.getUniformLocation(program, 'lightDir'),
+    emissive:   gl.getUniformLocation(program, 'emissive'),
+  };
+}
+
+// 부품 목록을 같은 메시(정육면체)로 차례로 그림
+export function drawParts(gl, loc, mesh, parts) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.position);
+  gl.vertexAttribPointer(loc.vPosition, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(loc.vPosition);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.normal);
+  gl.vertexAttribPointer(loc.vNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(loc.vNormal);
+
+  for (const p of parts) {
+    gl.uniformMatrix4fv(loc.model, false, p.model);
+    gl.uniformMatrix3fv(loc.normalMat, false, normalMatrix(p.model));
+    gl.uniform4fv(loc.color, p.color);
+    gl.uniform1f(loc.emissive, p.emissive);
+    gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+  }
 }
